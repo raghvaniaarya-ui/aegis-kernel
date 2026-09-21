@@ -43,6 +43,11 @@ $CSources = @(
     "kernel\src\idt.c"
 )
 
+$ServerCSources = @(
+    "servers\init\init.c",
+    "servers\vfs\vfs.c"
+)
+
 $AsmSources = @(
     "boot\boot.asm",
     "kernel\arch\x86_64\entry.asm",
@@ -61,6 +66,16 @@ foreach ($src in $CSources) {
     $Objects += $obj
 }
 
+# Compile servers separately (not linked into kernel)
+$ServerObjects = @()
+foreach ($src in $ServerCSources) {
+    $obj = Join-Path $Build ((Split-Path $src -Leaf) -replace '\.c$', '.o')
+    $args = $CFlags + @("-c", (Join-Path $Root $src), "-o", $obj)
+    & $CC @args
+    if ($LASTEXITCODE -ne 0) { throw "Compile failed: $src" }
+    $ServerObjects += $obj
+}
+
 foreach ($src in $AsmSources) {
     $obj = Join-Path $Build ((Split-Path $src -Leaf) -replace '\.asm$', '.o')
     & $NASM -f elf64 (Join-Path $Root $src) -o $obj
@@ -74,4 +89,16 @@ $LinkerScript = Join-Path $Root "linker.ld"
 & $LD "-T" $LinkerScript "-o" $Kernel @Objects
 if ($LASTEXITCODE -ne 0) { throw "Link failed" }
 
+# Link server binaries
+$InitBin = Join-Path $Build "init.elf"
+$VfsBin = Join-Path $Build "vfs.elf"
+
+& $LD "-T" $LinkerScript "-o" $InitBin "build\init.o", "build\string.o"
+if ($LASTEXITCODE -ne 0) { throw "Link init failed" }
+
+& $LD "-T" $LinkerScript "-o" $VfsBin "build\vfs.o", "build\string.o"
+if ($LASTEXITCODE -ne 0) { throw "Link vfs failed" }
+
 Write-Host "Built $Kernel" -ForegroundColor Green
+Write-Host "Built $InitBin" -ForegroundColor Green
+Write-Host "Built $VfsBin" -ForegroundColor Green
