@@ -2,6 +2,8 @@
 #include "ipc.h"
 #include "mm.h"
 #include "syscall.h"
+#include "sched.h"
+#include "idt.h"
 
 static void banner(void) {
     console_write("\n");
@@ -51,6 +53,20 @@ static void ipc_self_test(void) {
     console_write("\n");
 }
 
+static void task_a(void) {
+    for (;;) {
+        console_write("[task_a] running\n");
+        task_sleep(1000);
+    }
+}
+
+static void task_b(void) {
+    for (;;) {
+        console_write("[task_b] running\n");
+        task_sleep(2000);
+    }
+}
+
 void kmain(const void *multiboot_info) {
     (void)syscall_dispatch;
 
@@ -63,6 +79,11 @@ void kmain(const void *multiboot_info) {
 
     mm_init(multiboot_info);
     ipc_init();
+    idt_init();
+    sched_init();
+
+    task_create(task_a);
+    task_create(task_b);
 
     void *block = mm_alloc(64, 16);
     console_write("[mm] allocated test block @ ");
@@ -71,9 +92,6 @@ void kmain(const void *multiboot_info) {
 
     ipc_self_test();
 
-    console_write("\n[ready] kernel idle — next: scheduler + init server\n");
-
-    for (;;) {
-        __asm__ volatile("hlt");
-    }
+    console_write("\n[ready] starting scheduler...\n");
+    sched_start();
 }

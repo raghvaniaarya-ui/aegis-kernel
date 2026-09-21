@@ -5,7 +5,7 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $Build = Join-Path $Root "build"
 
 $CC = "clang"
-$LD = "ld.lld"
+$LD = "ld.exe"
 $NASM = "nasm"
 
 function Require-Tool([string]$Name) {
@@ -36,12 +36,17 @@ $CSources = @(
     "kernel\src\console.c",
     "kernel\src\ipc.c",
     "kernel\src\mm.c",
-    "kernel\src\syscall.c"
+    "kernel\src\syscall.c",
+    "kernel\src\sched.c",
+    "kernel\src\timer.c",
+    "kernel\src\keyboard.c",
+    "kernel\src\idt.c"
 )
 
 $AsmSources = @(
     "boot\boot.asm",
-    "kernel\arch\x86_64\entry.asm"
+    "kernel\arch\x86_64\entry.asm",
+    "kernel\arch\x86_64\isr.asm"
 )
 
 New-Item -ItemType Directory -Force -Path $Build | Out-Null
