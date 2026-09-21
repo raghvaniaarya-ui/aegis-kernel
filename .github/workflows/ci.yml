@@ -76,6 +76,12 @@ jobs:
           make clean
           make
 
+      - name: Run kernel unit tests (host)
+        run: |
+          cd kernel/tests
+          gcc test_framework.c -o test_framework
+          ./test_framework
+
       - name: Run basic kernel test
         run: |
           timeout 10 qemu-system-x86_64 \
