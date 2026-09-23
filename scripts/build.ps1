@@ -40,7 +40,10 @@ $CSources = @(
     "kernel\src\sched.c",
     "kernel\src\timer.c",
     "kernel\src\keyboard.c",
-    "kernel\src\idt.c"
+    "kernel\src\idt.c",
+    "kernel\src\elf.c",
+    "kernel\src\ramdisk.c",
+    "kernel\src\string.c"
 )
 
 $ServerCSources = @(
@@ -86,8 +89,15 @@ foreach ($src in $AsmSources) {
 $Kernel = Join-Path $Build "kernel.elf"
 $LinkerScript = Join-Path $Root "linker.ld"
 
-& $LD "-T" $LinkerScript "-o" $Kernel @Objects
-if ($LASTEXITCODE -ne 0) { throw "Link failed" }
+# First, build server binaries
+Write-Host "Building server binaries..."
+$ServerObjects = @()
+foreach ($src in $ServerCSources) {
+    $obj = Join-Path $Build ((Split-Path $src -Leaf) -replace '\.c$', '.o')
+    $args = $CFlags + @("-c", (Join-Path $Root $src), "-o", $obj)
+    & $CC @args
+    if ($LASTEXITCODE -ne 0) { throw "Compile failed: $src" }
+}
 
 # Link server binaries
 $InitBin = Join-Path $Build "init.elf"
@@ -99,6 +109,60 @@ if ($LASTEXITCODE -ne 0) { throw "Link init failed" }
 & $LD "-T" $LinkerScript "-o" $VfsBin "build\vfs.o", "build\string.o"
 if ($LASTEXITCODE -ne 0) { throw "Link vfs failed" }
 
-Write-Host "Built $Kernel" -ForegroundColor Green
+# Create ramdisk with server binaries
+Write-Host "Creating ramdisk..."
+$RamdiskDir = Join-Path $Build "ramdisk"
+New-Item -ItemType Directory -Force -Path $RamdiskDir | Out-Null
+Copy-Item "build\init.elf" "$RamdiskDir\init.elf" -Force
+Copy-Item "build\vfs.elf" "$RamdiskDir\vfs.elf" -Force
+
+python "$Root\scripts\mkramdisk.py" "$RamdiskDir" "$Build\ramdisk.img"
+if ($LASTEXITCODE -ne 0) { throw "Ramdisk creation failed" }
+
+# Embed ramdisk into kernel (create assembly with embedded binary)
+$RamdiskAsm = Join-Path $Build "ramdisk.asm"
+$RamdiskBin = Join-Path $Build "ramdisk.img"
+
+$RamdiskAsmContent = @"
+BITS 64
+SECTION .rodata
+GLOBAL _ramdisk_start
+GLOBAL _ramdisk_end
+GLOBAL _ramdisk_size
+
+_ramdisk_start:
+    incbin "ramdisk.img"
+_ramdisk_end:
+_ramdisk_size equ $$ - _ramdisk_start
+"@
+
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($RamdiskAsm, $RamdiskAsmContent, (New-Object System.Text.UTF8Encoding($false)))
+
+# Run NASM from the build directory to resolve relative paths
+$OldLocation = Get-Location
+Set-Location $Build
+& $NASM -f elf64 "ramdisk.asm" -o "ramdisk_embed.o"
+Set-Location $OldLocation
+if ($LASTEXITCODE -ne 0) { throw "Assemble ramdisk failed" }
+
+# Link kernel with ramdisk (ramdisk_embed.o provides embedded binary)
+$Kernel = Join-Path $Build "kernel.elf"
+$LinkerScript = Join-Path $Root "linker.ld"
+
+& $LD "-T" $LinkerScript "-o" $Kernel $Objects "build\ramdisk_embed.o"
+if ($LASTEXITCODE -ne 0) { throw "Link kernel with ramdisk failed" }
+
+# Link server binaries
+$InitBin = Join-Path $Build "init.elf"
+$VfsBin = Join-Path $Build "vfs.elf"
+
+& $LD "-T" $LinkerScript "-o" $InitBin "build\init.o", "build\string.o"
+if ($LASTEXITCODE -ne 0) { throw "Link init failed" }
+
+& $LD "-T" $LinkerScript "-o" $VfsBin "build\vfs.o", "build\string.o"
+if ($LASTEXITCODE -ne 0) { throw "Link vfs failed" }
+
+Write-Host "Built $Kernel with embedded ramdisk" -ForegroundColor Green
 Write-Host "Built $InitBin" -ForegroundColor Green
 Write-Host "Built $VfsBin" -ForegroundColor Green

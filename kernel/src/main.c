@@ -4,6 +4,8 @@
 #include "syscall.h"
 #include "sched.h"
 #include "idt.h"
+#include "elf.h"
+#include "ramdisk.h"
 
 static void banner(void) {
     console_write("\n");
@@ -67,6 +69,43 @@ static void task_b(void) {
     }
 }
 
+extern const uint8_t _ramdisk_start[];
+extern const uint8_t _ramdisk_end[];
+
+static void load_servers_from_ramdisk(void) {
+    console_write("[boot] Initializing ramdisk...\n");
+    ramdisk_init(_ramdisk_start);
+
+    console_write("[boot] Loading servers from ramdisk...\n");
+
+    uint64_t init_entry = 0;
+    void *init_data = NULL;
+    uint64_t init_size = 0;
+
+    if (ramdisk_load_file("init.elf", &init_data, &init_size) == 0) {
+        uint64_t entry_point = 0;
+        if (elf_load(init_data, &entry_point) == 0) {
+            console_write("[boot] Loaded init.elf at 0x");
+            console_write_hex(entry_point);
+            console_write("\n");
+            // TODO: Actually spawn the init server
+        }
+    } else {
+        console_write("[boot] init.elf not found in ramdisk\n");
+    }
+
+    void *vfs_data = NULL;
+    uint64_t vfs_size = 0;
+    if (ramdisk_load_file("vfs.elf", &vfs_data, &vfs_size) == 0) {
+        uint64_t entry_point = 0;
+        if (elf_load(vfs_data, &entry_point) == 0) {
+            console_write("[boot] Loaded vfs.elf at 0x");
+            console_write_hex(entry_point);
+            console_write("\n");
+        }
+    }
+}
+
 void kmain(const void *multiboot_info) {
     (void)syscall_dispatch;
 
@@ -91,6 +130,8 @@ void kmain(const void *multiboot_info) {
     console_write("\n");
 
     ipc_self_test();
+
+    load_servers_from_ramdisk();
 
     console_write("\n[ready] starting scheduler...\n");
     sched_start();
