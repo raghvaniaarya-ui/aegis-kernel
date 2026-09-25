@@ -48,7 +48,8 @@ $CSources = @(
 
 $ServerCSources = @(
     "servers\init\init.c",
-    "servers\vfs\vfs.c"
+    "servers\vfs\vfs.c",
+    "servers\proc\proc.c"
 )
 
 $AsmSources = @(
@@ -102,6 +103,7 @@ foreach ($src in $ServerCSources) {
 # Link server binaries
 $InitBin = Join-Path $Build "init.elf"
 $VfsBin = Join-Path $Build "vfs.elf"
+$ProcBin = Join-Path $Build "proc.elf"
 
 & $LD "-T" $LinkerScript "-o" $InitBin "build\init.o", "build\string.o"
 if ($LASTEXITCODE -ne 0) { throw "Link init failed" }
@@ -109,12 +111,16 @@ if ($LASTEXITCODE -ne 0) { throw "Link init failed" }
 & $LD "-T" $LinkerScript "-o" $VfsBin "build\vfs.o", "build\string.o"
 if ($LASTEXITCODE -ne 0) { throw "Link vfs failed" }
 
+& $LD "-T" $LinkerScript "-o" $ProcBin "build\proc.o", "build\string.o"
+if ($LASTEXITCODE -ne 0) { throw "Link proc failed" }
+
 # Create ramdisk with server binaries
 Write-Host "Creating ramdisk..."
 $RamdiskDir = Join-Path $Build "ramdisk"
 New-Item -ItemType Directory -Force -Path $RamdiskDir | Out-Null
 Copy-Item "build\init.elf" "$RamdiskDir\init.elf" -Force
 Copy-Item "build\vfs.elf" "$RamdiskDir\vfs.elf" -Force
+Copy-Item "build\proc.elf" "$RamdiskDir\proc.elf" -Force
 
 python "$Root\scripts\mkramdisk.py" "$RamdiskDir" "$Build\ramdisk.img"
 if ($LASTEXITCODE -ne 0) { throw "Ramdisk creation failed" }
