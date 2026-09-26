@@ -36,14 +36,6 @@ static inline int ipc_send(uint64_t endpoint, aegis_msg_t *msg) {
     return syscall(1, endpoint, (uint64_t)msg, 0, 0);
 }
 
-static inline int ipc_recv(uint64_t endpoint, aegis_msg_t *msg) {
-    return syscall(2, endpoint, (uint64_t)msg, 0, 0);
-}
-
-static inline int ipc_reply(uint64_t endpoint, aegis_msg_t *msg) {
-    return syscall(3, endpoint, (uint64_t)msg, 0, 0);
-}
-
 void console_write(const char *s) {
     aegis_msg_t msg = {0};
     msg.type = 1;
