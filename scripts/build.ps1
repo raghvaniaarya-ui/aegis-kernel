@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $Build = Join-Path $Root "build"
 
-$CC = "clang"
+$CC = "x86_64-w64-mingw32-gcc"
 $LD = "ld.exe"
 $NASM = "nasm"
 
@@ -20,15 +20,18 @@ Require-Tool $NASM
 
 $Includes = @("-I$Root\kernel\include")
 $CFlags = @(
-    "--target=x86_64-unknown-none-elf",
     "-ffreestanding",
     "-fno-stack-protector",
     "-fno-pic",
     "-mno-red-zone",
-    "-mcmodel=kernel",
+    "-mcmodel=large",
     "-Wall",
     "-Wextra",
-    "-std=gnu11"
+    "-std=gnu11",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-unwind-tables",
+    "-fno-asynchronous-unwind-tables"
 ) + $Includes
 
 $CSources = @(
@@ -100,18 +103,19 @@ foreach ($src in $ServerCSources) {
     if ($LASTEXITCODE -ne 0) { throw "Compile failed: $src" }
 }
 
-# Link server binaries
+# Link server binaries with separate linker script for user-space
+$ServerLinkerScript = Join-Path $Root "linker_server.ld"
 $InitBin = Join-Path $Build "init.elf"
 $VfsBin = Join-Path $Build "vfs.elf"
 $ProcBin = Join-Path $Build "proc.elf"
 
-& $LD "-T" $LinkerScript "-o" $InitBin "build\init.o", "build\string.o"
+& $LD "-T" $ServerLinkerScript "-o" $InitBin "build\init.o", "build\string.o"
 if ($LASTEXITCODE -ne 0) { throw "Link init failed" }
 
-& $LD "-T" $LinkerScript "-o" $VfsBin "build\vfs.o", "build\string.o"
+& $LD "-T" $ServerLinkerScript "-o" $VfsBin "build\vfs.o", "build\string.o"
 if ($LASTEXITCODE -ne 0) { throw "Link vfs failed" }
 
-& $LD "-T" $LinkerScript "-o" $ProcBin "build\proc.o", "build\string.o"
+& $LD "-T" $ServerLinkerScript "-o" $ProcBin "build\proc.o", "build\string.o"
 if ($LASTEXITCODE -ne 0) { throw "Link proc failed" }
 
 # Create ramdisk with server binaries

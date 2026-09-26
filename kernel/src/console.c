@@ -47,8 +47,25 @@ void console_write_hex(uint64_t value) {
     buf[0] = '0';
     buf[1] = 'x';
     for (int i = 15; i >= 0; i--) {
-        buf[2 + (15 - i)] = digits[(value >> (i * 4)) & 0xF];
+        uint8_t nibble = (value >> (i * 4)) & 0xF;
+        buf[2 + (15 - i)] = digits[nibble & 0xF];
     }
     buf[18] = '\0';
     console_write(buf);
+}
+
+void console_write_dec(uint64_t value) {
+    if (value == 0) {
+        console_write("0");
+        return;
+    }
+    char buf[21];
+    int i = 0;
+    while (value > 0) {
+        buf[i++] = '0' + (value % 10);
+        value /= 10;
+    }
+    for (int j = i - 1; j >= 0; j--) {
+        serial_write_char(buf[j]);
+    }
 }

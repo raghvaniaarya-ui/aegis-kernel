@@ -35,11 +35,7 @@ static inline int strcmp(const char *s1, const char *s2) {
     return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
 
-static inline size_t strlen(const char *s) {
-    size_t len = 0;
-    while (*s++) len++;
-    return len;
-}
+
 
 static inline void *memcpy(void *dest, const void *src, size_t n) {
     uint8_t *d = dest;

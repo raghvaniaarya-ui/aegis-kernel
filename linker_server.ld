@@ -2,10 +2,9 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = 1M;
+    . = 0x1000000;  /* 16 MiB */
 
     .text : ALIGN(4K) {
-        *(.multiboot_header)
         *(.text*)
     }
 
@@ -20,10 +19,5 @@ SECTIONS
     .bss : ALIGN(4K) {
         *(COMMON)
         *(.bss*)
-    }
-
-    /DISCARD/ : {
-        *(.comment)
-        *(.note*)
     }
 }
