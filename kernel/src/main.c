@@ -78,7 +78,6 @@ static void load_servers_from_ramdisk(void) {
 
     console_write("[boot] Loading servers from ramdisk...\n");
 
-    uint64_t init_entry = 0;
     void *init_data = NULL;
     uint64_t init_size = 0;
 
