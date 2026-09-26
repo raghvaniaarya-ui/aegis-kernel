@@ -9,6 +9,11 @@
 #define TASK_STACK_SIZE 4096
 #define TIME_SLICE_MS 10
 
+#define TASK_PRIORITY_LOW 0
+#define TASK_PRIORITY_NORMAL 1
+#define TASK_PRIORITY_HIGH 2
+#define TASK_PRIORITY_MAX 2
+
 typedef enum {
     TASK_STATE_EMPTY = 0,
     TASK_STATE_READY,
@@ -33,15 +38,18 @@ typedef struct {
     task_id_t next;
     uint64_t wake_time;
     void (*entry)(void);
+    uint8_t priority;
 } task_t;
 
 void sched_init(void);
 task_id_t task_create(void (*entry)(void));
+task_id_t task_create_priority(void (*entry)(void), uint8_t priority);
 void task_yield(void);
 void task_sleep(uint64_t ms);
 void task_wake(task_id_t id);
 void sched_tick(void);
 task_id_t sched_current(void);
 void sched_start(void);
+void task_set_priority(task_id_t id, uint8_t priority);
 
 #endif
