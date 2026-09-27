@@ -46,7 +46,8 @@ $CSources = @(
     "kernel\src\idt.c",
     "kernel\src\elf.c",
     "kernel\src\ramdisk.c",
-    "kernel\src\string.c"
+    "kernel\src\string.c",
+    "kernel\src\virtio_blk.c"
 )
 
 $ServerCSources = @(
