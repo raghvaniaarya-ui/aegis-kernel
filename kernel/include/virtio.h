@@ -29,6 +29,30 @@
 #define VIRTIO_BLK_F_TOPOLOGY 10
 #define VIRTIO_BLK_F_CONFIG_WCE 11
 
+#define VIRTIO_NET_F_CSUM 0
+#define VIRTIO_NET_F_GUEST_CSUM 1
+#define VIRTIO_NET_F_MAC 5
+#define VIRTIO_NET_F_GUEST_TSO4 7
+#define VIRTIO_NET_F_GUEST_TSO6 8
+#define VIRTIO_NET_F_GUEST_ECN 9
+#define VIRTIO_NET_F_GUEST_UFO 10
+#define VIRTIO_NET_F_HOST_TSO4 11
+#define VIRTIO_NET_F_HOST_TSO6 12
+#define VIRTIO_NET_F_HOST_ECN 13
+#define VIRTIO_NET_F_HOST_UFO 14
+#define VIRTIO_NET_F_MRG_RXBUF 15
+#define VIRTIO_NET_F_STATUS 16
+#define VIRTIO_NET_F_CTRL_VQ 17
+#define VIRTIO_NET_F_CTRL_RX 18
+#define VIRTIO_NET_F_CTRL_VLAN 19
+#define VIRTIO_NET_F_CTRL_RX_EXTRA 20
+#define VIRTIO_NET_F_GUEST_ANNOUNCE 21
+#define VIRTIO_NET_F_MQ 22
+#define VIRTIO_NET_F_CTRL_MAC_ADDR 23
+
+#define VIRTIO_NET_S_LINK_UP 1
+#define VIRTIO_NET_S_ANNOUNCE 2
+
 #define VIRTIO_BLK_T_IN 0
 #define VIRTIO_BLK_T_OUT 1
 #define VIRTIO_BLK_T_FLUSH 4
@@ -118,11 +142,32 @@ typedef struct {
     uint8_t writeback;
 } AEGIS_PACKED virtio_blk_config_t;
 
+typedef struct {
+    uint8_t mac[6];
+    uint16_t status;
+    uint16_t max_virtqueue_pairs;
+    uint32_t mtu;
+} AEGIS_PACKED virtio_net_config_t;
+
+typedef struct {
+    uint8_t flags;
+    uint8_t gso_type;
+    uint16_t hdr_len;
+    uint16_t gso_size;
+    uint16_t csum_start;
+    uint16_t csum_offset;
+    uint16_t num_buffers;
+} AEGIS_PACKED virtio_net_hdr_t;
+
 int virtio_init(uintptr_t base);
 int virtio_blk_init(uintptr_t base);
 int virtio_blk_read(uint64_t sector, void *buf, uint32_t count);
 int virtio_blk_write(uint64_t sector, const void *buf, uint32_t count);
 int virtio_blk_flush(void);
 void virtio_handle_irq(void);
+int virtio_net_init(uintptr_t base);
+int virtio_net_send(const void *data, uint32_t len);
+int virtio_net_recv(void *buf, uint32_t max_len);
+uint8_t *virtio_net_get_mac(void);
 
 #endif
